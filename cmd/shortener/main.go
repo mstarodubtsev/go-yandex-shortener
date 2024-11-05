@@ -9,6 +9,7 @@ import (
 // Main function
 func main() {
 	http.HandleFunc(`/`, app.PostURLHandler)
+	http.HandleFunc(`/list`, app.ListURLHandler)
 	http.HandleFunc(`/{id}`, app.GetURLHandler)
 
 	log.Println("Server started at :8080")

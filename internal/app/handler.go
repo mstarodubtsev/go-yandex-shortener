@@ -26,12 +26,22 @@ func PostURLHandler(res http.ResponseWriter, req *http.Request) {
 		}
 		bodyString := string(bodyBytes)
 		hash := getHash(bodyString)
-		m[hash] = bodyString
-		log.Printf(
-			"Url received and added to the map: url=%s; hash=%s\n",
-			bodyString,
-			hash,
-		)
+		// check if the URL already exists in the map
+		if _, ok := m[hash]; ok {
+			log.Printf(
+				"Url already exists in the map: url=%s; hash=%s\n",
+				bodyString,
+				hash,
+			)
+		} else {
+			// Add new URL to the map
+			m[hash] = bodyString
+			log.Printf(
+				"Url received and added to the map: url=%s; hash=%s\n",
+				bodyString,
+				hash,
+			)
+		}
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
 		res.Write([]byte("http://localhost:8080/" + hash))
@@ -47,10 +57,9 @@ func GetURLHandler(res http.ResponseWriter, req *http.Request) {
 	parts := strings.Split(path, "/")
 
 	if req.Method == "GET" && len(parts) > 1 && len(parts[1]) > 0 {
-		// return 307 status and Location header
+		// handle redirect request
 		id := parts[1]
 		log.Println("Url shortcut: ", id)
-
 		// return 404 if id not found
 		url, ok := m[id]
 		if !ok {
@@ -58,11 +67,32 @@ func GetURLHandler(res http.ResponseWriter, req *http.Request) {
 			res.WriteHeader(http.StatusNotFound)
 			return
 		}
-
-		// return result
+		// return 307 status and Location header
 		log.Println("Url found: ", url)
 		res.Header().Set("Location", url)
 		res.WriteHeader(http.StatusTemporaryRedirect)
+	} else {
+		// return 400
+		res.WriteHeader(http.StatusBadRequest)
+	}
+}
+
+// ListURLHandler Handle list URL requests
+func ListURLHandler(res http.ResponseWriter, req *http.Request) {
+	path := req.URL.Path
+	parts := strings.Split(path, "/")
+
+	if req.Method == "GET" && len(parts) > 1 && len(parts[1]) > 0 {
+		// handle list request
+		id := parts[1]
+		if id == "list" {
+			res.Header().Set("Content-Type", "text/plain")
+			res.WriteHeader(http.StatusOK)
+			for k, v := range m {
+				res.Write([]byte(k + " -> " + v + "\n"))
+			}
+			return
+		}
 	} else {
 		// return 400
 		res.WriteHeader(http.StatusBadRequest)
