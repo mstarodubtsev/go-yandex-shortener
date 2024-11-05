@@ -59,7 +59,7 @@ func GetURLHandler(res http.ResponseWriter, req *http.Request) {
 	if req.Method == "GET" && len(parts) > 1 && len(parts[1]) > 0 {
 		// handle redirect request
 		id := parts[1]
-		log.Println("Url shortcut: ", id)
+		log.Println("Get Url shortcut: ", id)
 		// return 404 if id not found
 		url, ok := m[id]
 		if !ok {
