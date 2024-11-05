@@ -3,6 +3,7 @@ package app
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"github.com/mstarodubtsev/go-yandex-shortener/internal/config"
 	"io"
 	"log"
 	"net/http"
@@ -44,7 +45,7 @@ func PostURLHandler(res http.ResponseWriter, req *http.Request) {
 		}
 		res.Header().Set("Content-Type", "text/plain")
 		res.WriteHeader(http.StatusCreated)
-		res.Write([]byte("http://localhost:8080/" + hash))
+		res.Write([]byte("http://" + config.FlagResultURL + "/" + hash))
 	} else {
 		// return 400
 		res.WriteHeader(http.StatusBadRequest)

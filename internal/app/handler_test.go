@@ -2,6 +2,7 @@ package app
 
 import (
 	"bytes"
+	"github.com/mstarodubtsev/go-yandex-shortener/internal/config"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"
@@ -10,8 +11,16 @@ import (
 	"testing"
 )
 
+// setup function to initialize common test data
+func setup() {
+	config.FlagRunAddr = "localhost:8080"
+	config.FlagResultURL = "localhost:8080"
+}
+
 // TestPostURLHandler tests the PostURLHandler function
 func TestPostURLHandler(t *testing.T) {
+	setup()
+
 	type want struct {
 		code        int
 		body        string
@@ -83,6 +92,8 @@ func TestPostURLHandler(t *testing.T) {
 
 // TestGetURLHandler tests the GetURLHandler function
 func TestGetURLHandler(t *testing.T) {
+	setup()
+
 	// Set up test data in the map
 	m["12345678"] = "https://example.com"
 

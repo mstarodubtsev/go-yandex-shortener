@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/go-chi/chi/v5"
 	"github.com/mstarodubtsev/go-yandex-shortener/internal/app"
+	"github.com/mstarodubtsev/go-yandex-shortener/internal/config"
 	"log"
 	"net/http"
 )
@@ -18,8 +19,12 @@ func router() chi.Router {
 
 // Main function
 func main() {
-	log.Println("Server started at :8080")
-	err := http.ListenAndServe(`:8080`, router())
+	// parse command line arguments
+	config.ParseFlags()
+
+	// start server
+	log.Printf("Server started at: %s\n", config.FlagRunAddr)
+	err := http.ListenAndServe(config.FlagRunAddr, router())
 	if err != nil {
 		panic(err)
 	}
