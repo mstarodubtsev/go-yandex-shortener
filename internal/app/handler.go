@@ -3,6 +3,7 @@ package app
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"github.com/go-chi/chi/v5"
 	"github.com/mstarodubtsev/go-yandex-shortener/internal/config"
 	"io"
 	"log"
@@ -13,43 +14,61 @@ import (
 // Map to store urls
 var m map[string]string = make(map[string]string)
 
+// POST структура тела запроса
+type shortenRequest struct {
+	URL string `json:"url"`
+}
+
+// POST структура тела ответа
+type shortenResponse struct {
+	Result string `json:"result"`
+}
+
+// Router
+func Router() chi.Router {
+	r := chi.NewRouter()
+	r.Post("/", PostURLHandler)
+	r.Get("/{id}", GetURLHandler)
+	r.Get("/list", ListURLHandler)
+	return r
+}
+
 // PostURLHandler Handle POST requests
 func PostURLHandler(res http.ResponseWriter, req *http.Request) {
-	if req.Method == "POST" && req.Body != nil {
-		bodyBytes, err := io.ReadAll(req.Body)
-		if err != nil {
-			http.Error(res, "Unable to read body", http.StatusBadRequest)
-			return
-		}
-		if len(bodyBytes) == 0 {
-			http.Error(res, "Empty body", http.StatusBadRequest)
-			return
-		}
-		bodyString := string(bodyBytes)
-		hash := getHash(bodyString)
-		// check if the URL already exists in the map
-		if _, ok := m[hash]; ok {
-			log.Printf(
-				"Url already exists in the map: url=%s; hash=%s\n",
-				bodyString,
-				hash,
-			)
-		} else {
-			// Add new URL to the map
-			m[hash] = bodyString
-			log.Printf(
-				"Url received and added to the map: url=%s; hash=%s\n",
-				bodyString,
-				hash,
-			)
-		}
-		res.Header().Set("Content-Type", "text/plain")
-		res.WriteHeader(http.StatusCreated)
-		res.Write([]byte("http://" + config.FlagResultURL + "/" + hash))
-	} else {
-		// return 400
-		res.WriteHeader(http.StatusBadRequest)
+	if req.Body == nil {
+		http.Error(res, "Empty body", http.StatusBadRequest)
+		return
 	}
+	bodyBytes, err := io.ReadAll(req.Body)
+	if err != nil {
+		http.Error(res, "Unable to read body", http.StatusBadRequest)
+		return
+	}
+	if len(bodyBytes) == 0 {
+		http.Error(res, "Empty body", http.StatusBadRequest)
+		return
+	}
+	bodyString := string(bodyBytes)
+	hash := getHash(bodyString)
+	// check if the URL already exists in the map
+	if _, ok := m[hash]; ok {
+		log.Printf(
+			"Url already exists in the map: url=%s; hash=%s\n",
+			bodyString,
+			hash,
+		)
+	} else {
+		// Add new URL to the map
+		m[hash] = bodyString
+		log.Printf(
+			"Url received and added to the map: url=%s; hash=%s\n",
+			bodyString,
+			hash,
+		)
+	}
+	res.Header().Set("Content-Type", "text/plain")
+	res.WriteHeader(http.StatusCreated)
+	res.Write([]byte(config.FlagResultURL + "/" + hash))
 }
 
 // GetURLHandler Handle GET requests
@@ -57,25 +76,25 @@ func GetURLHandler(res http.ResponseWriter, req *http.Request) {
 	path := req.URL.Path
 	parts := strings.Split(path, "/")
 
-	if req.Method == "GET" && len(parts) > 1 && len(parts[1]) > 0 {
-		// handle redirect request
-		id := parts[1]
-		log.Println("Get Url shortcut: ", id)
-		// return 404 if id not found
-		url, ok := m[id]
-		if !ok {
-			log.Println("Url not found")
-			res.WriteHeader(http.StatusNotFound)
-			return
-		}
-		// return 307 status and Location header
-		log.Println("Url found: ", url)
-		res.Header().Set("Location", url)
-		res.WriteHeader(http.StatusTemporaryRedirect)
-	} else {
-		// return 400
+	if !(len(parts) > 1 && len(parts[1]) > 0) {
 		res.WriteHeader(http.StatusBadRequest)
+		return
 	}
+	// handle redirect request
+	id := parts[1]
+	log.Println("Get Url shortcut: ", id)
+	// return 404 if id not found
+	url, ok := m[id]
+	if !ok {
+		log.Println("Url not found")
+		res.WriteHeader(http.StatusNotFound)
+		return
+	}
+	// return 307 status and Location header
+	log.Println("Url found: ", url)
+	//res.Header().Set("Location", url)
+	//res.WriteHeader(http.StatusTemporaryRedirect)
+	http.Redirect(res, req, url, http.StatusTemporaryRedirect)
 }
 
 // ListURLHandler Handle list URL requests

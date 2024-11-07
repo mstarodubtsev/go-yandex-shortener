@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"github.com/mstarodubtsev/go-yandex-shortener/internal/config"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -14,7 +15,7 @@ import (
 // setup function to initialize common test data
 func setup() {
 	config.FlagRunAddr = "localhost:8080"
-	config.FlagResultURL = "localhost:8080"
+	config.FlagResultURL = "http://localhost:8080"
 }
 
 // TestPostURLHandler tests the PostURLHandler function
@@ -49,15 +50,6 @@ func TestPostURLHandler(t *testing.T) {
 			want: want{
 				code: http.StatusBadRequest,
 				body: "Empty body\n",
-			},
-		},
-		{
-			name:   "Non-POST request method",
-			method: "GET",
-			body:   "https://example.com",
-			want: want{
-				code: http.StatusBadRequest,
-				body: "",
 			},
 		},
 	}
@@ -126,13 +118,6 @@ func TestGetURLHandler(t *testing.T) {
 			expectedStatus: http.StatusBadRequest,
 			expectedBody:   "",
 		},
-		{
-			name:           "Non-GET request method",
-			method:         "POST",
-			path:           "/12345678",
-			expectedStatus: http.StatusBadRequest,
-			expectedBody:   "",
-		},
 	}
 
 	for _, tt := range tests {
@@ -167,4 +152,127 @@ func TestGetURLHandler(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestRouter tests the Router function
+func TestRouter(t *testing.T) {
+	setup()
+	type want struct {
+		code        int
+		body        string
+		header      string
+		contentType string
+	}
+	tests := []struct {
+		name   string
+		url    string
+		method string
+		body   string
+		want   want
+	}{
+		{
+			name:   "Valid POST request",
+			url:    "/",
+			method: "POST",
+			body:   "https://example.com",
+			want: want{
+				code:        http.StatusCreated,
+				body:        "http://localhost:8080/",
+				contentType: "text/plain",
+			},
+		},
+		{
+			name:   "Empty body",
+			url:    "/",
+			method: "POST",
+			body:   "",
+			want: want{
+				code: http.StatusBadRequest,
+				body: "Empty body\n",
+			},
+		},
+		{
+			name:   "Non-POST request method",
+			url:    "/",
+			method: "GET",
+			body:   "https://example.com",
+			want: want{
+				code: http.StatusMethodNotAllowed,
+				body: "",
+			},
+		},
+		{
+			url:    "/12345678",
+			name:   "Valid GET request with existing hash",
+			method: "GET",
+			want: want{
+				code:   http.StatusTemporaryRedirect,
+				header: "https://example.com",
+			},
+		},
+		{
+			name:   "Valid GET request with non-existing hash",
+			url:    "/nonexistent",
+			method: "GET",
+			want: want{
+				code: http.StatusNotFound,
+			},
+		},
+		{
+			name:   "Non-GET request method",
+			url:    "/12345678",
+			method: "POST",
+			want: want{
+				code: http.StatusMethodNotAllowed,
+			},
+		},
+	}
+
+	ts := httptest.NewServer(Router())
+	defer ts.Close()
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			resp, bodyString := testRequest(t, ts, tt.method, tt.url, tt.body)
+			defer resp.Body.Close()
+			if resp.StatusCode != tt.want.code {
+				t.Errorf("Expected status %d, got %d", tt.want.code, resp.StatusCode)
+			}
+			assert.Equal(t, tt.want.code, resp.StatusCode)
+			if tt.want.code == http.StatusCreated {
+				if !strings.HasPrefix(bodyString, tt.want.body) {
+					t.Errorf("Expected response body to start with %s, got %s", tt.want.body, bodyString)
+				}
+				assert.Equal(t, tt.want.contentType, resp.Header.Get("Content-Type"))
+			} else if tt.want.code == http.StatusTemporaryRedirect {
+				location := resp.Header.Get("Location")
+				if location != tt.want.header {
+					t.Errorf("Expected Location header %s, got %s", tt.want.header, location)
+				}
+			} else if bodyString != tt.want.body {
+				t.Errorf("Expected response body %s, got %s", tt.want.body, bodyString)
+			}
+		})
+	}
+}
+
+// testRequest is a helper function to make HTTP requests to the test server
+func testRequest(t *testing.T, ts *httptest.Server, method, path string, body string) (*http.Response, string) {
+	req, err := http.NewRequest(method, ts.URL+path, strings.NewReader(body))
+	require.NoError(t, err)
+
+	// restrict redirects
+	client := ts.Client()
+	client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	// make request
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	return resp, string(respBody)
 }

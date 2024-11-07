@@ -13,6 +13,6 @@ var FlagResultURL string
 // ParseFlags parses flags
 func ParseFlags() {
 	flag.StringVar(&FlagRunAddr, "a", "localhost:8080", "address and port to run server")
-	flag.StringVar(&FlagResultURL, "b", "localhost:8080", "address and port for result URL")
+	flag.StringVar(&FlagResultURL, "b", "http://localhost:8080", "address and port for result URL")
 	flag.Parse()
 }
