@@ -5,14 +5,14 @@ import (
 )
 
 // FlagRunAddr address and port to run server
-var FlagRunAddr string
+var flagRunAddr string
 
 // FlagResultUrl address and port to result url
-var FlagResultURL string
+var flagBaseURL string
 
 // ParseFlags parses flags
-func ParseFlags() {
-	flag.StringVar(&FlagRunAddr, "a", "localhost:8080", "address and port to run server")
-	flag.StringVar(&FlagResultURL, "b", "http://localhost:8080", "address and port for result URL")
+func parseFlags() {
+	flag.StringVar(&flagRunAddr, "a", "localhost:8080", "address and port to run server")
+	flag.StringVar(&flagBaseURL, "b", "http://localhost:8080", "base URL for result")
 	flag.Parse()
 }

@@ -9,12 +9,12 @@ import (
 
 // Main function
 func main() {
-	// parse command line arguments
-	config.ParseFlags()
+	// parse config
+	config.ParseConfig()
 
 	// start server
-	log.Printf("Server started at: %s\n", config.FlagRunAddr)
-	err := http.ListenAndServe(config.FlagRunAddr, app.Router())
+	log.Printf("Server started at: %s\n", config.Config.ServerAddress)
+	err := http.ListenAndServe(config.Config.ServerAddress, app.Router())
 	if err != nil {
 		panic(err)
 	}

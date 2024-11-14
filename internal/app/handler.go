@@ -68,7 +68,7 @@ func PostURLHandler(res http.ResponseWriter, req *http.Request) {
 	}
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
-	res.Write([]byte(config.FlagResultURL + "/" + hash))
+	res.Write([]byte(config.Config.BaseURL + "/" + hash))
 }
 
 // GetURLHandler Handle GET requests

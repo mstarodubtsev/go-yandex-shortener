@@ -14,8 +14,8 @@ import (
 
 // setup function to initialize common test data
 func setup() {
-	config.FlagRunAddr = "localhost:8080"
-	config.FlagResultURL = "http://localhost:8080"
+	config.Config.ServerAddress = "localhost:8080"
+	config.Config.BaseURL = "http://localhost:8080"
 }
 
 // TestPostURLHandler tests the PostURLHandler function
