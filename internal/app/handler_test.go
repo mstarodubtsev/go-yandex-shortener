@@ -87,7 +87,7 @@ func TestGetURLHandler(t *testing.T) {
 	setup()
 
 	// Set up test data in the map
-	m["12345678"] = "https://example.com"
+	store.AddURL("12345678", "https://example.com")
 
 	tests := []struct {
 		name           string

@@ -5,14 +5,12 @@ import (
 	"encoding/hex"
 	"github.com/go-chi/chi/v5"
 	"github.com/mstarodubtsev/go-yandex-shortener/internal/config"
+	"github.com/mstarodubtsev/go-yandex-shortener/internal/storage"
 	"io"
 	"log"
 	"net/http"
 	"strings"
 )
-
-// Map to store urls
-var m map[string]string = make(map[string]string)
 
 // POST структура тела запроса
 type shortenRequest struct {
@@ -23,6 +21,9 @@ type shortenRequest struct {
 type shortenResponse struct {
 	Result string `json:"result"`
 }
+
+// Store URL storage
+var store storage.Storage = storage.NewMap()
 
 // Router
 func Router() chi.Router {
@@ -51,7 +52,7 @@ func PostURLHandler(res http.ResponseWriter, req *http.Request) {
 	bodyString := string(bodyBytes)
 	hash := getHash(bodyString)
 	// check if the URL already exists in the map
-	if _, ok := m[hash]; ok {
+	if _, ok := store.GetURL(hash); ok {
 		log.Printf(
 			"Url already exists in the map: url=%s; hash=%s\n",
 			bodyString,
@@ -59,7 +60,7 @@ func PostURLHandler(res http.ResponseWriter, req *http.Request) {
 		)
 	} else {
 		// Add new URL to the map
-		m[hash] = bodyString
+		store.AddURL(hash, bodyString)
 		log.Printf(
 			"Url received and added to the map: url=%s; hash=%s\n",
 			bodyString,
@@ -84,7 +85,7 @@ func GetURLHandler(res http.ResponseWriter, req *http.Request) {
 	id := parts[1]
 	log.Println("Get Url shortcut: ", id)
 	// return 404 if id not found
-	url, ok := m[id]
+	url, ok := store.GetURL(id)
 	if !ok {
 		log.Println("Url not found")
 		res.WriteHeader(http.StatusNotFound)
@@ -108,7 +109,7 @@ func ListURLHandler(res http.ResponseWriter, req *http.Request) {
 		if id == "list" {
 			res.Header().Set("Content-Type", "text/plain")
 			res.WriteHeader(http.StatusOK)
-			for k, v := range m {
+			for k, v := range store.GetAll() {
 				res.Write([]byte(k + " -> " + v + "\n"))
 			}
 			return
