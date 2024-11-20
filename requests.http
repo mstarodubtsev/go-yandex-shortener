@@ -1,0 +1,14 @@
+### get URL list
+// @no-log
+GET http://localhost:8080/list
+
+### get URL
+// @no-log
+GET http://localhost:8080/42b3e75f
+
+### post URL
+// @no-log
+POST http://localhost:8080
+Content-Type: text/plain
+
+https://practicum.yandex.ru/
