@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"github.com/mstarodubtsev/go-yandex-shortener/internal/config"
+	"github.com/mstarodubtsev/go-yandex-shortener/internal/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -16,6 +17,11 @@ import (
 func setup() {
 	config.Config.ServerAddress = "localhost:8080"
 	config.Config.BaseURL = "http://localhost:8080"
+
+	// Initialize logger
+	log.InitializeLogger()
+	defer log.Logger.Sync()
+
 }
 
 // TestPostURLHandler tests the PostURLHandler function

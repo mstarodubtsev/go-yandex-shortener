@@ -2,7 +2,7 @@ package config
 
 import (
 	"github.com/caarlos0/env/v6"
-	"log"
+	"github.com/mstarodubtsev/go-yandex-shortener/internal/log"
 )
 
 type EnvConfig struct {
@@ -18,6 +18,6 @@ func GetEnvConfig() EnvConfig {
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("Current environment variables:", cfg)
+	log.Infof("Current environment variables: %+v", cfg)
 	return cfg
 }

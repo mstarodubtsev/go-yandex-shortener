@@ -5,19 +5,20 @@ import (
 	"encoding/hex"
 	"github.com/go-chi/chi/v5"
 	"github.com/mstarodubtsev/go-yandex-shortener/internal/config"
+	"github.com/mstarodubtsev/go-yandex-shortener/internal/log"
+	"github.com/mstarodubtsev/go-yandex-shortener/internal/middleware"
 	"github.com/mstarodubtsev/go-yandex-shortener/internal/storage"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 )
 
-// POST структура тела запроса
+// POST structure of the request body
 type shortenRequest struct {
 	URL string `json:"url"`
 }
 
-// POST структура тела ответа
+// POST structure of the response body
 type shortenResponse struct {
 	Result string `json:"result"`
 }
@@ -28,6 +29,12 @@ var store storage.Storage = storage.NewMap()
 // Router
 func Router() chi.Router {
 	r := chi.NewRouter()
+
+	// Apply the WithLogging middleware with the logger
+	r.Use(func(next http.Handler) http.Handler {
+		return middleware.WithLogging(next)
+	})
+
 	r.Post("/", PostURLHandler)
 	r.Get("/{id}", GetURLHandler)
 	r.Get("/list", ListURLHandler)
@@ -53,19 +60,11 @@ func PostURLHandler(res http.ResponseWriter, req *http.Request) {
 	hash := getHash(bodyString)
 	// check if the URL already exists in the map
 	if _, ok := store.GetURL(hash); ok {
-		log.Printf(
-			"Url already exists in the map: url=%s; hash=%s\n",
-			bodyString,
-			hash,
-		)
+		log.Infof("URL already exists in the map: url=%s; hash=%s", bodyString, hash)
 	} else {
 		// Add new URL to the map
 		store.AddURL(hash, bodyString)
-		log.Printf(
-			"Url received and added to the map: url=%s; hash=%s\n",
-			bodyString,
-			hash,
-		)
+		log.Infof("URL received and added to the map: url=%s; hash=%s", bodyString, hash)
 	}
 	res.Header().Set("Content-Type", "text/plain")
 	res.WriteHeader(http.StatusCreated)
@@ -83,16 +82,16 @@ func GetURLHandler(res http.ResponseWriter, req *http.Request) {
 	}
 	// handle redirect request
 	id := parts[1]
-	log.Println("Get Url shortcut: ", id)
+	log.Infof("Get Url shortcut: %s", id)
 	// return 404 if id not found
 	url, ok := store.GetURL(id)
 	if !ok {
-		log.Println("Url not found")
+		log.Infof("Url not found: %s", id)
 		res.WriteHeader(http.StatusNotFound)
 		return
 	}
 	// return 307 status and Location header
-	log.Println("Url found: ", url)
+	log.Infof("Url found: %s", url)
 	//res.Header().Set("Location", url)
 	//res.WriteHeader(http.StatusTemporaryRedirect)
 	http.Redirect(res, req, url, http.StatusTemporaryRedirect)
@@ -100,6 +99,7 @@ func GetURLHandler(res http.ResponseWriter, req *http.Request) {
 
 // ListURLHandler Handle list URL requests
 func ListURLHandler(res http.ResponseWriter, req *http.Request) {
+	log.Infof("List Url shortcuts")
 	path := req.URL.Path
 	parts := strings.Split(path, "/")
 
