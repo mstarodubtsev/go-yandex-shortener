@@ -1,8 +1,11 @@
 package app
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/mstarodubtsev/go-yandex-shortener/internal/config"
 	"github.com/mstarodubtsev/go-yandex-shortener/internal/log"
@@ -35,10 +38,67 @@ func Router() chi.Router {
 		return middleware.WithLogging(next)
 	})
 
+	r.Post("/api/shorten", PostURLHandlerJSON)
 	r.Post("/", PostURLHandler)
 	r.Get("/{id}", GetURLHandler)
 	r.Get("/list", ListURLHandler)
 	return r
+}
+
+// PostURLHandlerJSON Handle POST requests with JSON body
+func PostURLHandlerJSON(res http.ResponseWriter, req *http.Request) {
+	log.Infof("POST /api/shorten")
+	if req.Body == nil {
+		http.Error(res, "Empty body", http.StatusBadRequest)
+		return
+	}
+	bodyBytes, err := io.ReadAll(req.Body)
+	if err != nil {
+		http.Error(res, "Unable to read body", http.StatusBadRequest)
+		return
+	}
+	if len(bodyBytes) == 0 {
+		http.Error(res, "Empty body", http.StatusBadRequest)
+		return
+	}
+	// decode request JSON body
+	var request shortenRequest
+	if err := json.NewDecoder(bytes.NewReader(bodyBytes)).Decode(&request); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := request.Validate(); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
+	log.Infof("URL received: %s", request.URL)
+	url := string(request.URL)
+	hash := getHash(url)
+	// check if the URL already exists in the map
+	if _, ok := store.GetURL(hash); ok {
+		log.Infof("URL already exists in the map: url=%s; hash=%s", url, hash)
+	} else {
+		// Add new URL to the map
+		store.AddURL(hash, url)
+		log.Infof("URL received and added to the map: url=%s; hash=%s", url, hash)
+	}
+	response := shortenResponse{Result: config.Config.BaseURL + "/" + hash}
+	responseBytes, err := json.Marshal(response)
+	if err != nil {
+		http.Error(res, "Unable to marshal response", http.StatusInternalServerError)
+		return
+	}
+	res.Header().Set("Content-Type", "application/json")
+	res.WriteHeader(http.StatusCreated)
+	res.Write(responseBytes)
+}
+
+// Validate checks if the required fields are present
+func (r *shortenRequest) Validate() error {
+	if r.URL == "" {
+		return errors.New("missing URL value")
+	}
+	return nil
 }
 
 // PostURLHandler Handle POST requests

@@ -24,6 +24,94 @@ func setup() {
 
 }
 
+// TestPostURLHandlerJSON tests the PostURLHandlerJSON function
+func TestPostURLHandlerJSON(t *testing.T) {
+	setup()
+	type want struct {
+		code        int
+		body        string
+		contentType string
+	}
+	tests := []struct {
+		name   string
+		method string
+		body   string
+		want   want
+	}{
+		{
+			name:   "Valid JSON request",
+			method: "POST",
+			body:   `{"url": "https://example.com"}`,
+			want: want{
+				code:        http.StatusCreated,
+				body:        "http://localhost:8080/",
+				contentType: "application/json",
+			},
+		},
+		{
+			name:   "Duplicate URL",
+			method: "POST",
+			body:   `{"url": "https://example.com"}`,
+			want: want{
+				code:        http.StatusCreated,
+				body:        "http://localhost:8080/",
+				contentType: "application/json",
+			},
+		},
+		{
+			name:   "Empty body",
+			method: "POST",
+			body:   "",
+			want: want{
+				code: http.StatusBadRequest,
+				body: "Empty body\n",
+			},
+		},
+		{
+			name:   "Malformed JSON",
+			method: "POST",
+			body:   `{"url": "https://example.com`,
+			want: want{
+				code: http.StatusBadRequest,
+				body: "unexpected EOF\n",
+			},
+		},
+		{
+			name:   "Missing URL field",
+			method: "POST",
+			body:   `{"data": "https://example.com"}`,
+			want: want{
+				code: http.StatusBadRequest,
+				body: "missing URL value\n",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, "/api/shorten", bytes.NewBufferString(tt.body))
+			res := httptest.NewRecorder()
+
+			PostURLHandlerJSON(res, req)
+
+			result := res.Result()
+			defer result.Body.Close()
+
+			bodyBytes, _ := io.ReadAll(result.Body)
+			bodyString := string(bodyBytes)
+
+			assert.Equal(t, tt.want.code, result.StatusCode)
+
+			if result.StatusCode == http.StatusCreated {
+				assert.True(t, strings.HasPrefix(bodyString, `{"result":"http://localhost:8080/`))
+				assert.Equal(t, tt.want.contentType, result.Header.Get("Content-Type"))
+			} else {
+				assert.Equal(t, tt.want.body, bodyString)
+			}
+		})
+	}
+}
+
 // TestPostURLHandler tests the PostURLHandler function
 func TestPostURLHandler(t *testing.T) {
 	setup()
