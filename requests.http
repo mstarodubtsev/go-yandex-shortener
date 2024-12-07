@@ -1,10 +1,19 @@
+### post URL with JSON body
+// @no-log
+POST http://localhost:8080/api/shorten
+Content-Type: application/json
+
+{
+  "url": "https://www.google.com"
+}
+
 ### get URL list
 // @no-log
 GET http://localhost:8080/list
 
 ### get URL
 // @no-log
-GET http://localhost:8080/42b3e75f
+GET http://localhost:8080/ac6bb669
 
 ### post URL
 // @no-log
