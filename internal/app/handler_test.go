@@ -21,7 +21,6 @@ func setup() {
 	// Initialize logger
 	log.InitializeLogger()
 	defer log.Logger.Sync()
-
 }
 
 // TestPostURLHandlerJSON tests the PostURLHandlerJSON function

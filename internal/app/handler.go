@@ -34,14 +34,12 @@ func Router() chi.Router {
 	r := chi.NewRouter()
 
 	// Apply the WithLogging middleware with the logger
-	r.Use(func(next http.Handler) http.Handler {
-		return middleware.WithLogging(next)
-	})
+	r.Use(middleware.WithLogging)
 
-	r.Post("/api/shorten", PostURLHandlerJSON)
-	r.Post("/", PostURLHandler)
-	r.Get("/{id}", GetURLHandler)
-	r.Get("/list", ListURLHandler)
+	r.With(middleware.WithCompressingPost).Post("/api/shorten", PostURLHandlerJSON)
+	r.With(middleware.WithCompressingPost).Post("/", PostURLHandler)
+	r.With(middleware.WithCompressingGet).Get("/{id}", GetURLHandler)
+	r.With(middleware.WithCompressingGet).Get("/list", ListURLHandler)
 	return r
 }
 
