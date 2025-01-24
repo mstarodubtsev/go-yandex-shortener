@@ -16,6 +16,13 @@ import (
 	"strings"
 )
 
+// Store URL storage
+var store storage.Storage
+
+func SetStore(s storage.Storage) {
+	store = s
+}
+
 // POST structure of the request body
 type shortenRequest struct {
 	URL string `json:"url"`
@@ -25,9 +32,6 @@ type shortenRequest struct {
 type shortenResponse struct {
 	Result string `json:"result"`
 }
-
-// Store URL storage
-var store storage.Storage = storage.NewMap()
 
 // Router
 func Router() chi.Router {

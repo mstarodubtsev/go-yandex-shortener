@@ -15,9 +15,16 @@ GET http://localhost:8080/list
 // @no-log
 GET http://localhost:8080/ac6bb669
 
-### post URL
+### post URL 2
 // @no-log
 POST http://localhost:8080
 Content-Type: text/plain
 
 https://practicum.yandex.ru/
+
+### post URL 1
+// @no-log
+POST http://localhost:8080
+Content-Type: text/plain
+
+https://www.yandex.ru/
