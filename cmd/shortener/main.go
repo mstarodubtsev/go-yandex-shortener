@@ -18,12 +18,15 @@ func main() {
 	config.ParseConfig()
 
 	// init storage
-	var store storage.Storage = storage.NewFileStorage(config.Config.FileStoragePath)
+	store, err := storage.NewFileStorage(config.Config.FileStoragePath)
+	if err != nil {
+		panic(err)
+	}
 	app.SetStore(store)
 
 	// start server
 	log.Infof("Server started at: %s", config.Config.ServerAddress)
-	err := http.ListenAndServe(config.Config.ServerAddress, app.Router())
+	err = http.ListenAndServe(config.Config.ServerAddress, app.Router())
 	if err != nil {
 		panic(err)
 	}

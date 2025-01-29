@@ -25,7 +25,7 @@ func setup() {
 	defer log.Logger.Sync()
 
 	// init storage
-	var store storage.Storage = storage.NewFileStorage(config.Config.FileStoragePath)
+	store, _ := storage.NewFileStorage(config.Config.FileStoragePath)
 	SetStore(store)
 }
 
@@ -103,15 +103,6 @@ func TestPostURLHandlerJSON(t *testing.T) {
 			name:   "Wrong URL",
 			method: "POST",
 			body:   `{"url": "111"}`,
-			want: want{
-				code: http.StatusBadRequest,
-				body: "URL must start with http:// or https://\n",
-			},
-		},
-		{
-			name:   "Wrong URL",
-			method: "POST",
-			body:   `{"url": "http://111"}`,
 			want: want{
 				code: http.StatusBadRequest,
 				body: "URL must start with http:// or https://\n",

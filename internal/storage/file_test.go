@@ -24,10 +24,10 @@ func TestFileStorage_AddURL(t *testing.T) {
 	}
 	defer os.Remove(file.Name())
 
-	storage := NewFileStorage(file.Name())
+	storage, _ := NewFileStorage(file.Name())
 	storage.AddURL("short1", "http://example.com")
 
-	result, found := storage.GetURL("short1")
+	result, found, _ := storage.GetURL("short1")
 	if !found {
 		t.Fatalf("Expected URL not found")
 	}
@@ -44,8 +44,8 @@ func TestFileStorage_GetURLNotFound(t *testing.T) {
 	}
 	defer os.Remove(file.Name())
 
-	storage := NewFileStorage(file.Name())
-	_, found := storage.GetURL("nonexistent")
+	storage, _ := NewFileStorage(file.Name())
+	_, found, _ := storage.GetURL("nonexistent")
 	if found {
 		t.Errorf("Did not expect to find URL")
 	}
@@ -59,11 +59,11 @@ func TestFileStorage_GetAll(t *testing.T) {
 	}
 	defer os.Remove(file.Name())
 
-	storage := NewFileStorage(file.Name())
+	storage, _ := NewFileStorage(file.Name())
 	storage.AddURL("short1", "http://example1.com")
 	storage.AddURL("short2", "http://example2.com")
 
-	allURLs := storage.GetAll()
+	allURLs, _ := storage.GetAll()
 	if len(allURLs) != 2 {
 		t.Errorf("Expected 2 URLs, got %d", len(allURLs))
 	}
@@ -83,7 +83,7 @@ func TestFileStorage_Concurrency(t *testing.T) {
 	}
 	defer os.Remove(file.Name())
 
-	storage := NewFileStorage(file.Name())
+	storage, _ := NewFileStorage(file.Name())
 	var wg sync.WaitGroup
 
 	numWrites := 100
@@ -98,7 +98,7 @@ func TestFileStorage_Concurrency(t *testing.T) {
 
 	wg.Wait()
 
-	allURLs := storage.GetAll()
+	allURLs, _ := storage.GetAll()
 	if len(allURLs) != numWrites {
 		t.Errorf("Expected %d URLs, got %d", numWrites, len(allURLs))
 	}
@@ -112,12 +112,12 @@ func TestFileStorage_RestoreCounter(t *testing.T) {
 	}
 	defer os.Remove(file.Name())
 
-	storage := NewFileStorage(file.Name())
+	storage, _ := NewFileStorage(file.Name())
 	storage.AddURL("short1", "http://example1.com")
 	storage.AddURL("short2", "http://example2.com")
 
 	file.Close()
-	newStorage := NewFileStorage(file.Name())
+	newStorage, _ := NewFileStorage(file.Name())
 
 	if atomic.LoadInt64(&newStorage.counter) != 2 {
 		t.Errorf("Expected counter to be restored to 2, got %d", newStorage.counter)

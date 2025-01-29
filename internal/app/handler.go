@@ -80,7 +80,12 @@ func PostURLHandlerJSON(res http.ResponseWriter, req *http.Request) {
 	url := string(request.URL)
 	hash := getHash(url)
 	// check if the URL already exists in the map
-	if _, ok := store.GetURL(hash); ok {
+	_, ok, err := store.GetURL(hash)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if ok {
 		log.Infof("URL already exists in the map: url=%s; hash=%s", url, hash)
 	} else {
 		// Add new URL to the map
@@ -125,7 +130,12 @@ func PostURLHandler(res http.ResponseWriter, req *http.Request) {
 	}
 	hash := getHash(bodyString)
 	// check if the URL already exists in the map
-	if _, ok := store.GetURL(hash); ok {
+	_, ok, err := store.GetURL(hash)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if ok {
 		log.Infof("URL already exists in the map: url=%s; hash=%s", bodyString, hash)
 	} else {
 		// Add new URL to the map
@@ -149,7 +159,11 @@ func GetURLHandler(res http.ResponseWriter, req *http.Request) {
 	id := parts[1]
 	log.Infof("Get Url shortcut: %s", id)
 	// return 404 if id not found
-	url, ok := store.GetURL(id)
+	url, ok, err := store.GetURL(id)
+	if err != nil {
+		http.Error(res, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	if !ok {
 		log.Infof("Url not found: %s", id)
 		res.WriteHeader(http.StatusNotFound)
@@ -174,7 +188,12 @@ func ListURLHandler(res http.ResponseWriter, req *http.Request) {
 		if id == "list" {
 			res.Header().Set("Content-Type", "text/plain")
 			res.WriteHeader(http.StatusOK)
-			for k, v := range store.GetAll() {
+			rows, err := store.GetAll()
+			if err != nil {
+				http.Error(res, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			for k, v := range rows {
 				res.Write([]byte(k + " -> " + v + "\n"))
 			}
 			return

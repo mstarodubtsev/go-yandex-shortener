@@ -1,3 +1,13 @@
+
+### post URL with JSON body
+// @no-log
+POST http://localhost:8080/api/shorten
+Content-Type: application/json
+
+{
+  "url": "http://111"
+}
+
 ### post URL with JSON body
 // @no-log
 POST http://localhost:8080/api/shorten
@@ -13,18 +23,29 @@ GET http://localhost:8080/list
 
 ### get URL
 // @no-log
+GET http://localhost:8080/0d7766b5
+
+### get URL
+// @no-log
 GET http://localhost:8080/ac6bb669
 
-### post URL 2
+### post URL
 // @no-log
 POST http://localhost:8080
 Content-Type: text/plain
 
 https://practicum.yandex.ru/
 
-### post URL 1
+### post URL
 // @no-log
 POST http://localhost:8080
 Content-Type: text/plain
 
 https://www.yandex.ru/
+
+### post URL
+// @no-log
+POST http://localhost:8080
+Content-Type: text/plain
+
+www.ya.ru
