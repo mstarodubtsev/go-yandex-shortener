@@ -19,51 +19,42 @@ func (w gzipWriter) Write(b []byte) (int, error) {
 	return w.Writer.Write(b)
 }
 
-// WithCompressingPost is a middleware that compresses the request body if it is gzipped
-func WithCompressingPost(next http.Handler) http.Handler {
+// WithCompressing is a middleware that compresses the request body if Content-Encoding == gzip
+// and compresses the response body if Accept-Encoding == gzip
+func WithCompressing(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var reader io.Reader
+		// check that the request body is gzipped Content-Encoding == gzip
 		if r.Header.Get(`Content-Encoding`) == `gzip` {
+			// create gzip.Reader over the current r.Body
 			log.Infof("Request is gzipped")
 			gz, err := gzip.NewReader(r.Body)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			reader = gz
+			r.Body = io.NopCloser(gz)
 			defer gz.Close()
 		} else {
 			log.Infof("Request is not gzipped")
-			reader = r.Body
 		}
-		// Create a new request with the decompressed body
-		r.Body = io.NopCloser(reader)
-		// Pass the handler the request with potentially decompressed body
-		next.ServeHTTP(w, r)
-	})
-}
-
-// WithCompressingGet is a middleware that compresses the response body if the client supports gzip
-func WithCompressingGet(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// check that the client supports gzip compression
-		if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-			// if gzip is not supported, pass control
+		// check that the client supports gzip compression Accept-Encoding == gzip
+		var responseWriter http.ResponseWriter
+		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+			// create gzip.Writer over the current w
+			log.Infof("Gzip is supported")
+			gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			defer gz.Close()
+			responseWriter = gzipWriter{ResponseWriter: w, Writer: gz}
+			w.Header().Set("Content-Encoding", "gzip")
+		} else {
 			log.Infof("Gzip is not supported")
-			next.ServeHTTP(w, r)
-			return
+			responseWriter = w
 		}
-		// create gzip.Writer over the current w
-		log.Infof("Gzip is supported")
-		gz, err := gzip.NewWriterLevel(w, gzip.BestSpeed)
-		if err != nil {
-			io.WriteString(w, err.Error())
-			return
-		}
-		defer gz.Close()
-
-		w.Header().Set("Content-Encoding", "gzip")
 		// pass to handler the variable of type gzipWriter for output data
-		next.ServeHTTP(gzipWriter{ResponseWriter: w, Writer: gz}, r)
+		next.ServeHTTP(responseWriter, r)
 	})
 }
