@@ -87,7 +87,34 @@ func TestPostURLHandlerJSON(t *testing.T) {
 			body:   `{"data": "https://example.com"}`,
 			want: want{
 				code: http.StatusBadRequest,
-				body: "missing URL value\n",
+				body: "URL cannot be empty\n",
+			},
+		},
+		{
+			name:   "Empty URL",
+			method: "POST",
+			body:   `{"url": ""}`,
+			want: want{
+				code: http.StatusBadRequest,
+				body: "URL cannot be empty\n",
+			},
+		},
+		{
+			name:   "Wrong URL",
+			method: "POST",
+			body:   `{"url": "111"}`,
+			want: want{
+				code: http.StatusBadRequest,
+				body: "URL must start with http:// or https://\n",
+			},
+		},
+		{
+			name:   "Wrong URL",
+			method: "POST",
+			body:   `{"url": "http://111"}`,
+			want: want{
+				code: http.StatusBadRequest,
+				body: "URL must start with http:// or https://\n",
 			},
 		},
 	}

@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/mstarodubtsev/go-yandex-shortener/internal/config"
 	"github.com/mstarodubtsev/go-yandex-shortener/internal/log"
@@ -13,6 +14,7 @@ import (
 	"github.com/mstarodubtsev/go-yandex-shortener/internal/storage"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -38,12 +40,13 @@ func Router() chi.Router {
 	r := chi.NewRouter()
 
 	// Apply the WithLogging middleware with the logger
-	r.Use(middleware.WithLogging)
+	r.Use(middleware.WithLogging, middleware.WithCompressing)
 
-	r.With(middleware.WithCompressingPost).Post("/api/shorten", PostURLHandlerJSON)
-	r.With(middleware.WithCompressingPost).Post("/", PostURLHandler)
-	r.With(middleware.WithCompressingGet).Get("/{id}", GetURLHandler)
-	r.With(middleware.WithCompressingGet).Get("/list", ListURLHandler)
+	// Routes
+	r.Post("/api/shorten", PostURLHandlerJSON)
+	r.Post("/", PostURLHandler)
+	r.Get("/{id}", GetURLHandler)
+	r.Get("/list", ListURLHandler)
 	return r
 }
 
@@ -97,10 +100,7 @@ func PostURLHandlerJSON(res http.ResponseWriter, req *http.Request) {
 
 // Validate checks if the required fields are present
 func (r *shortenRequest) Validate() error {
-	if r.URL == "" {
-		return errors.New("missing URL value")
-	}
-	return nil
+	return ValidateURL(r.URL)
 }
 
 // PostURLHandler Handle POST requests
@@ -119,6 +119,10 @@ func PostURLHandler(res http.ResponseWriter, req *http.Request) {
 		return
 	}
 	bodyString := string(bodyBytes)
+	if err := ValidateURL(bodyString); err != nil {
+		http.Error(res, err.Error(), http.StatusBadRequest)
+		return
+	}
 	hash := getHash(bodyString)
 	// check if the URL already exists in the map
 	if _, ok := store.GetURL(hash); ok {
@@ -137,7 +141,6 @@ func PostURLHandler(res http.ResponseWriter, req *http.Request) {
 func GetURLHandler(res http.ResponseWriter, req *http.Request) {
 	path := req.URL.Path
 	parts := strings.Split(path, "/")
-
 	if !(len(parts) > 1 && len(parts[1]) > 0) {
 		res.WriteHeader(http.StatusBadRequest)
 		return
@@ -192,4 +195,29 @@ func getHash(bodyString string) string {
 		hashString = hashString[:8]
 	}
 	return hashString
+}
+
+// ValidateURL Check if the URL is valid
+func ValidateURL(value string) error {
+	log.Infof("Validating URL: %s", value)
+	// check if URL is empty
+	if value == "" {
+		return errors.New("URL cannot be empty")
+	}
+	// parse the URL
+	parsedURL, err := url.Parse(value)
+	if err != nil {
+		log.Infof("Invalid URL format: %s", value)
+		return fmt.Errorf("invalid URL format: %v", err)
+	}
+	// check if scheme is HTTP or HTTPS
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return errors.New("URL must start with http:// or https://")
+	}
+	// check if host is present
+	if parsedURL.Host == "" {
+		return errors.New("URL must contain a host")
+	}
+	log.Infof("Valid URL: %s", value)
+	return nil
 }
