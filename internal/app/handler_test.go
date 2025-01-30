@@ -3,6 +3,8 @@ package app
 import (
 	"bytes"
 	"github.com/mstarodubtsev/go-yandex-shortener/internal/config"
+	"github.com/mstarodubtsev/go-yandex-shortener/internal/log"
+	"github.com/mstarodubtsev/go-yandex-shortener/internal/storage"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"io"
@@ -16,6 +18,121 @@ import (
 func setup() {
 	config.Config.ServerAddress = "localhost:8080"
 	config.Config.BaseURL = "http://localhost:8080"
+	config.Config.FileStoragePath = "/tmp/storage.txt"
+
+	// Initialize logger
+	log.InitializeLogger()
+	defer log.Logger.Sync()
+
+	// init storage
+	store, _ := storage.NewFileStorage(config.Config.FileStoragePath)
+	SetStore(store)
+}
+
+// TestPostURLHandlerJSON tests the PostURLHandlerJSON function
+func TestPostURLHandlerJSON(t *testing.T) {
+	setup()
+	type want struct {
+		code        int
+		body        string
+		contentType string
+	}
+	tests := []struct {
+		name   string
+		method string
+		body   string
+		want   want
+	}{
+		{
+			name:   "Valid JSON request",
+			method: "POST",
+			body:   `{"url": "https://example.com"}`,
+			want: want{
+				code:        http.StatusCreated,
+				body:        "http://localhost:8080/",
+				contentType: "application/json",
+			},
+		},
+		{
+			name:   "Duplicate URL",
+			method: "POST",
+			body:   `{"url": "https://example.com"}`,
+			want: want{
+				code:        http.StatusCreated,
+				body:        "http://localhost:8080/",
+				contentType: "application/json",
+			},
+		},
+		{
+			name:   "Empty body",
+			method: "POST",
+			body:   "",
+			want: want{
+				code: http.StatusBadRequest,
+				body: "Empty body\n",
+			},
+		},
+		{
+			name:   "Malformed JSON",
+			method: "POST",
+			body:   `{"url": "https://example.com`,
+			want: want{
+				code: http.StatusBadRequest,
+				body: "unexpected EOF\n",
+			},
+		},
+		{
+			name:   "Missing URL field",
+			method: "POST",
+			body:   `{"data": "https://example.com"}`,
+			want: want{
+				code: http.StatusBadRequest,
+				body: "URL cannot be empty\n",
+			},
+		},
+		{
+			name:   "Empty URL",
+			method: "POST",
+			body:   `{"url": ""}`,
+			want: want{
+				code: http.StatusBadRequest,
+				body: "URL cannot be empty\n",
+			},
+		},
+		{
+			name:   "Wrong URL",
+			method: "POST",
+			body:   `{"url": "111"}`,
+			want: want{
+				code: http.StatusBadRequest,
+				body: "URL must start with http:// or https://\n",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(tt.method, "/api/shorten", bytes.NewBufferString(tt.body))
+			res := httptest.NewRecorder()
+
+			PostURLHandlerJSON(res, req)
+
+			result := res.Result()
+			defer result.Body.Close()
+
+			bodyBytes, _ := io.ReadAll(result.Body)
+			bodyString := string(bodyBytes)
+
+			assert.Equal(t, tt.want.code, result.StatusCode)
+
+			if result.StatusCode == http.StatusCreated {
+				assert.True(t, strings.HasPrefix(bodyString, `{"result":"http://localhost:8080/`))
+				assert.Equal(t, tt.want.contentType, result.Header.Get("Content-Type"))
+			} else {
+				assert.Equal(t, tt.want.body, bodyString)
+			}
+		})
+	}
 }
 
 // TestPostURLHandler tests the PostURLHandler function

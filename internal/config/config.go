@@ -2,8 +2,9 @@ package config
 
 // AppConfig struct
 type AppConfig struct {
-	ServerAddress string
-	BaseURL       string
+	ServerAddress   string
+	BaseURL         string
+	FileStoragePath string
 }
 
 // Config variable
@@ -17,6 +18,7 @@ func ParseConfig() {
 	// Assign default values if environment variables are empty
 	Config.ServerAddress = chooseNonEmpty(env.ServerAddress, flagRunAddr)
 	Config.BaseURL = chooseNonEmpty(env.BaseURL, flagBaseURL)
+	Config.FileStoragePath = chooseNonEmpty(env.FileStoragePath, flagFileStoragePath)
 }
 
 // chooseNonEmpty returns the first non-empty string from the arguments
